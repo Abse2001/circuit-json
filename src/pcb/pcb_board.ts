@@ -9,7 +9,7 @@ import {
 import { length, type Length } from "src/units"
 import { expectTypesMatch } from "src/utils/expect-types-match"
 
-// Common properties base for all board shapes (internal)
+// Base properties shared by all boards
 const pcb_board_base = z.object({
   type: z.literal("pcb_board"),
   pcb_board_id: getZodPrefixedIdWithDefault("pcb_board"),
@@ -37,73 +37,28 @@ const pcb_board_base = z.object({
   position_mode: z.enum(["relative_to_panel_anchor", "none"]).optional(),
 })
 
-// Rectangular Board
-export const pcb_board_rect = pcb_board_base.extend({
+// Shape-specific properties (discriminated by "shape")
+const pcb_board_rect_properties = z.object({
   shape: z.literal("rect"),
   width: length,
   height: length,
 })
-export type PcbBoardRectInput = z.input<typeof pcb_board_rect>
-type InferredPcbBoardRect = z.infer<typeof pcb_board_rect>
-/**
- * Defines a rectangular board outline of the PCB.
- */
-export interface PcbBoardRect {
-  type: "pcb_board"
-  pcb_board_id: string
-  pcb_panel_id?: string
-  is_subcircuit?: boolean
-  subcircuit_id?: string
-  display_offset_x?: string
-  display_offset_y?: string
-  thickness: Length
-  num_layers: number
-  center: Point
-  material: "fr4" | "fr1"
-  anchor_position?: Point
-  anchor_alignment?: NinePointAnchor
-  position_mode?: "relative_to_panel_anchor" | "none"
-  shape: "rect"
-  width: Length
-  height: Length
-}
-expectTypesMatch<PcbBoardRect, InferredPcbBoardRect>(true)
 
-// Polygon Board
-export const pcb_board_polygon = pcb_board_base.extend({
+const pcb_board_polygon_properties = z.object({
   shape: z.literal("polygon"),
   outline: z.array(point),
 })
-export type PcbBoardPolygonInput = z.input<typeof pcb_board_polygon>
-type InferredPcbBoardPolygon = z.infer<typeof pcb_board_polygon>
-/**
- * Defines a polygonal board outline of the PCB.
- */
-export interface PcbBoardPolygon {
-  type: "pcb_board"
-  pcb_board_id: string
-  pcb_panel_id?: string
-  is_subcircuit?: boolean
-  subcircuit_id?: string
-  display_offset_x?: string
-  display_offset_y?: string
-  thickness: Length
-  num_layers: number
-  center: Point
-  material: "fr4" | "fr1"
-  anchor_position?: Point
-  anchor_alignment?: NinePointAnchor
-  position_mode?: "relative_to_panel_anchor" | "none"
-  shape: "polygon"
-  outline: Point[]
-}
-expectTypesMatch<PcbBoardPolygon, InferredPcbBoardPolygon>(true)
 
-// Union of all board shapes
-const pcb_board_shape_union = z.discriminatedUnion("shape", [
-  pcb_board_rect,
-  pcb_board_polygon,
+const pcb_board_shape_properties = z.discriminatedUnion("shape", [
+  pcb_board_rect_properties,
+  pcb_board_polygon_properties,
 ])
+
+// Combined schema using intersection
+const pcb_board_combined = z.intersection(
+  pcb_board_base,
+  pcb_board_shape_properties,
+)
 
 export const pcb_board = z
   .preprocess((input) => {
@@ -136,13 +91,61 @@ export const pcb_board = z
       return boardInput
     }
     return input
-  }, pcb_board_shape_union)
+  }, pcb_board_combined)
   .describe("Defines the board outline of the PCB.")
 
-export type PcbBoardInput = z.input<typeof pcb_board>
-export type PcbBoard = PcbBoardRect | PcbBoardPolygon
+// Base interface shared by all boards
+interface PcbBoardBase {
+  type: "pcb_board"
+  pcb_board_id: string
+  pcb_panel_id?: string
+  is_subcircuit?: boolean
+  subcircuit_id?: string
+  display_offset_x?: string
+  display_offset_y?: string
+  thickness: Length
+  num_layers: number
+  center: Point
+  material: "fr4" | "fr1"
+  anchor_position?: Point
+  anchor_alignment?: NinePointAnchor
+  position_mode?: "relative_to_panel_anchor" | "none"
+}
 
+// Shape-specific property interfaces
+interface PcbBoardRectProperties {
+  shape: "rect"
+  width: Length
+  height: Length
+}
+
+interface PcbBoardPolygonProperties {
+  shape: "polygon"
+  outline: Point[]
+}
+
+type PcbBoardShapeProperties =
+  | PcbBoardRectProperties
+  | PcbBoardPolygonProperties
+
+/**
+ * Defines a rectangular board outline of the PCB.
+ */
+export type PcbBoardRect = PcbBoardBase & PcbBoardRectProperties
+
+/**
+ * Defines a polygonal board outline of the PCB.
+ */
+export type PcbBoardPolygon = PcbBoardBase & PcbBoardPolygonProperties
+
+/**
+ * Defines the board outline of the PCB.
+ */
+export type PcbBoard = PcbBoardBase & PcbBoardShapeProperties
+
+export type PcbBoardInput = z.input<typeof pcb_board>
 type InferredPcbBoard = z.infer<typeof pcb_board>
+
 expectTypesMatch<PcbBoard, InferredPcbBoard>(true)
 
 /**
