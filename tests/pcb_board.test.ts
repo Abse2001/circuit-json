@@ -31,23 +31,21 @@ test("pcb_board with outline allows width and height to be omitted", () => {
   expect(board.outline?.length).toBe(4)
 })
 
-test("pcb_board can have both width/height and outline", () => {
-  const board = pcb_board.parse({
-    type: "pcb_board",
-    width: "10mm",
-    height: "20mm",
-    center: { x: 0, y: 0 },
-    outline: [
-      { x: 0, y: 0 },
-      { x: 10, y: 0 },
-      { x: 10, y: 10 },
-      { x: 0, y: 10 },
-    ],
-  })
-
-  expect(board.width).toBe(10)
-  expect(board.height).toBe(20)
-  expect(board.outline?.length).toBe(4)
+test("pcb_board cannot have both width/height and outline", () => {
+  expect(() =>
+    pcb_board.parse({
+      type: "pcb_board",
+      width: "10mm",
+      height: "20mm",
+      center: { x: 0, y: 0 },
+      outline: [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+        { x: 10, y: 10 },
+        { x: 0, y: 10 },
+      ],
+    }),
+  ).toThrow("Cannot specify both width/height and outline")
 })
 
 test("pcb_board with shape rect", () => {
@@ -81,7 +79,7 @@ test("pcb_board with shape polygon", () => {
   expect(board.outline?.length).toBe(4)
 })
 
-test("pcb_board shape property is optional", () => {
+test("pcb_board shape is derived from width/height", () => {
   const board = pcb_board.parse({
     type: "pcb_board",
     width: "10mm",
@@ -89,7 +87,7 @@ test("pcb_board shape property is optional", () => {
     center: { x: 0, y: 0 },
   })
 
-  expect(board.shape).toBeUndefined()
+  expect(board.shape).toBe("rect")
 })
 
 test("pcb_board with anchor properties", () => {
